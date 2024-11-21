@@ -6,8 +6,7 @@ from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_openapi_agent
 from langchain.output_parsers.openai_functions import JsonOutputFunctionsParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import BaseMessage
-from langchain_core.prompts.chat import HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.tools import Tool
 from langchain_core.runnables import Runnable
@@ -33,7 +32,7 @@ openai_model = st.sidebar.selectbox(
     "Select GPT model",
     ["gpt-3.5-turbo-0125", "gpt-3.5-turbo", "gpt-4-0125-preview"]
 )
-openai_key = st.sidebar.text_input("Your OpenAPI Key", type="password")
+openai_key = st.sidebar.text_input("Your OpenAI API Key", type="password")
 
 # Verify API key when provided
 if openai_key and not st.session_state.api_key_verified:
@@ -52,8 +51,8 @@ if openai_key and not st.session_state.api_key_verified:
 user_input = st.text_input("Enter your message here: ")
 
 # Define tools
-@Tool(name="Scrape web", description="Scrape web content from URLs.")
 def analyze(urls: list[str]) -> str:
+    """Scrape web content from URLs."""
     try:
         loader = WebBaseLoader(urls)
         docs = loader.load()
@@ -63,8 +62,8 @@ def analyze(urls: list[str]) -> str:
     except Exception as e:
         return f"Error scraping web content: {str(e)}"
 
-@Tool(name="Market Research", description="Perform Amazon market analysis.")
 def research(content: str) -> str:
+    """Perform Amazon market analysis."""
     try:
         chat = ChatOpenAI(model=openai_model)
         messages = [
@@ -76,8 +75,8 @@ def research(content: str) -> str:
     except Exception as e:
         return f"Error in market research: {str(e)}"
 
-@Tool(name="DropShipping", description="Perform dropshipping analysis.")
 def drop_ship(content: str) -> str:
+    """Perform dropshipping analysis."""
     try:
         chat = ChatOpenAI(model=openai_model)
         messages = [
@@ -88,6 +87,13 @@ def drop_ship(content: str) -> str:
         return res.content
     except Exception as e:
         return f"Error in dropshipping analysis: {str(e)}"
+
+# Initialize tools
+tools = [
+    Tool(name="Scrape web", func=analyze, description="Scrape web content from URLs."),
+    Tool(name="Market Research", func=research, description="Perform Amazon market analysis."),
+    Tool(name="DropShipping", func=drop_ship, description="Perform dropshipping analysis."),
+]
 
 # Agent creation function
 def create_agent(llm: ChatOpenAI, tools: list, system_prompt: str):
@@ -108,15 +114,15 @@ llm = ChatOpenAI(
 
 def amazon_scraper():
     prompt = "Amazon Scraper"
-    return create_agent(llm, [analyze], prompt)
+    return create_agent(llm, tools=[tools[0]], system_prompt=prompt)
 
 def amazon_research():
     prompt = "Amazon Researcher"
-    return create_agent(llm, [research], prompt)
+    return create_agent(llm, tools=[tools[1]], system_prompt=prompt)
 
 def amazon_dropship():
     prompt = "Amazon Seller"
-    return create_agent(llm, [drop_ship], prompt)
+    return create_agent(llm, tools=[tools[2]], system_prompt=prompt)
 
 # StateGraph for workflow
 SCRAPER = "SCRAPER"
